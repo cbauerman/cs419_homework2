@@ -2,9 +2,12 @@ var gl; // A global variable for the WebGL context
 var vertexPositionAttribute;
 var shaderProgram;
 
-var spherePositionBuffer;
-var sphereIndexBuffer;
+var spherepositionBuffer;
+var sphereindexBuffer;
 
+var objects = [];
+
+var light = {};
 
 function run(){
 	drawScene();
@@ -25,9 +28,19 @@ function start() {
 	}
 	
 	initShaders();
+
+	init();
 	
-	genSphere(30, 30, 600);
+	objects.push(genSphere(30, 30, 1));
+	objects[0].translate = [0.0, 0.0, 0.0];
+	objects[0].ambient = $V([1.0, 0.0, 1.0, 1.0]);
+	objects[0].diffuse = $V([1.0, 0.5, 0.0, 1.0]);
+	objects[0].specular = $V([1.0, 0.5, 0.0, 1.0]);
+	objects[0].shininess = 400.0;
+	//objects.push(genCylinder(2, 1, 30, 30));
+	//objects[1].translate = [0.0, 1.0, 0.0];
 	
+
 	runProgram();
 }
 
@@ -46,17 +59,112 @@ function runProgram(){
 	
 }
 
+
+function genCylinder(height, radius, v_lines, h_lines)
+{
+	var cyl = {};
+	cyl.positionBuffer = gl.createBuffer();
+	gl.bindBuffer(gl.ARRAY_BUFFER, cyl.positionBuffer);
+	cyl.indexBuffer = gl.createBuffer();
+	gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cyl.indexBuffer);
+
+	var cylPositionArray = [];
+	var cylIndexArray = [];
+	
+	var indAcc = 0;
+	var h;
+	//triangle fans at top
+	
+	for(var vert = 0; vert <= v_lines; ++vert){
+		h = vert/v_lines * height - height/2;
+		for(var hor = 0; hor < h_lines; ++hor){
+			cylPositionArray.push(radius * Math.cos((hor/h_lines) * 2 * Math.PI ));
+			cylPositionArray.push(h);
+			cylPositionArray.push(radius * Math.sin((hor/h_lines) * 2 * Math.PI ));
+		}
+	}
+
+	for(var vert = 0; vert < v_lines; ++vert){
+		for(var hor = 0; hor < h_lines - 1; ++hor){
+			var first = (vert * (h_lines)) + hor;
+            var second = first + h_lines;
+			cylIndexArray.push(first);
+			cylIndexArray.push(second);
+			cylIndexArray.push(first + 1);
+			cylIndexArray.push(first + 1);
+			cylIndexArray.push(second);
+			cylIndexArray.push(second + 1);
+		}
+		var first = (vert * (h_lines)) + (h_lines - 1);
+		var second = first + h_lines;
+		cylIndexArray.push(first);
+		cylIndexArray.push(second);
+		cylIndexArray.push(vert * (h_lines));
+		cylIndexArray.push(vert * (h_lines));
+		cylIndexArray.push(second);
+		cylIndexArray.push(vert * h_lines + h_lines);
+		
+	}
+	
+	//top center point
+	cylPositionArray.push(0.0);
+	cylPositionArray.push(-height/2);
+	cylPositionArray.push(0.0);
+	
+	//bottom center point
+	cylPositionArray.push(0.0);
+	cylPositionArray.push(height/2);
+	cylPositionArray.push(0.0);
+	
+	//top fan
+	for(var i = 0; i < (h_lines - 1); ++i){
+		cylIndexArray.push((v_lines + 1) * h_lines);
+		cylIndexArray.push(i);
+		cylIndexArray.push(i + 1);
+	}
+	
+	cylIndexArray.push((v_lines + 1) * h_lines);
+	cylIndexArray.push(h_lines - 1);
+	cylIndexArray.push(0);
+	
+	
+	//bottom fan
+	var adjust = v_lines * h_lines;
+	for(var i = 0; i < (h_lines - 1); ++i){
+		cylIndexArray.push((v_lines + 1) * h_lines + 1);
+		cylIndexArray.push(adjust + i + 1);
+		cylIndexArray.push(adjust + i);
+	}
+	
+	cylIndexArray.push((v_lines + 1) * h_lines + 1);
+	cylIndexArray.push(adjust + h_lines - 1);
+	cylIndexArray.push(adjust);
+
+	
+	gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(cylPositionArray), gl.STATIC_DRAW);
+	cyl.positionBuffer.itemSize = 3;
+	cyl.positionBuffer.numItems = cylPositionArray.length / 3;
+
+	gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(cylIndexArray), gl.STATIC_DRAW);
+	cyl.indexBuffer.itemSize = 1;
+	cyl.indexBuffer.numItems = cylIndexArray.length;
+	
+	return cyl;
+}
+
 function genSphere(latitude, longitude, radius)
 {
-
-	spherePositionBuffer = gl.createBuffer();
-	gl.bindBuffer(gl.ARRAY_BUFFER, spherePositionBuffer);
-	sphereIndexBuffer = gl.createBuffer();
-	gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, sphereIndexBuffer);
+	var sphere = {};
+	sphere.positionBuffer = gl.createBuffer();
+	gl.bindBuffer(gl.ARRAY_BUFFER, sphere.positionBuffer);
+	sphere.normalBuffer = gl.createBuffer();
+	gl.bindBuffer(gl.ARRAY_BUFFER, sphere.normalBuffer);
+	sphere.indexBuffer = gl.createBuffer();
+	gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, sphere.indexBuffer);
 
 	var spherePositionArray = [];
-	var sphereColorArray = [];
 	var sphereIndexArray = [];
+	var sphereNormalArray = [];
 	
 	for (var lat=0; lat <= latitude; lat++){
 		var theta = lat * Math.PI / latitude;
@@ -75,6 +183,10 @@ function genSphere(latitude, longitude, radius)
             spherePositionArray.push(radius * x);
             spherePositionArray.push(radius * y);
             spherePositionArray.push(radius * z);
+			
+			sphereIndexArray.push(x);
+			sphereIndexArray.push(y);
+			sphereIndexArray.push(z);
 	
 		}
 	}
@@ -97,12 +209,18 @@ function genSphere(latitude, longitude, radius)
 		
 		
 	gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(spherePositionArray), gl.STATIC_DRAW);
-	spherePositionBuffer.itemSize = 3;
-	spherePositionBuffer.numItems = spherePositionArray.length / 3;
+	sphere.positionBuffer.itemSize = 3;
+	sphere.positionBuffer.numItems = spherePositionArray.length / 3;
+	
+	gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(sphereNormalArray), gl.STATIC_DRAW);
+	sphere.normalBuffer.itemSize = 3;
+	sphere.normalBuffer.numItems = sphereNormalnArray.length / 3;
 
 	gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(sphereIndexArray), gl.STATIC_DRAW);
-	sphereIndexBuffer.itemSize = 1;
-	sphereIndexBuffer.numItems = sphereIndexArray.length;
+	sphere.indexBuffer.itemSize = 1;
+	sphere.indexBuffer.numItems = sphereIndexArray.length;
+	
+	return sphere;
 
 }
 	
@@ -144,13 +262,23 @@ function initShaders() {
 
 	gl.useProgram(shaderProgram);
 
-	shaderProgram.vertexPositionAttribute = gl.getAttribLocation(shaderProgram, "aVertexPosition");
-	gl.enableVertexAttribArray(shaderProgram.vertexPositionAttribute);
-	shaderProgram.vertexColorAttribute = gl.getAttribLocation(shaderProgram, "aVertexColor");
-	gl.enableVertexAttribArray(shaderProgram.vertexColorAttribute);
+	shaderProgram.vPosition = gl.getAttribLocation(shaderProgram, "vPosition");
+	gl.enableVertexAttribArray(shaderProgram.vPosition);
+	shaderProgram.vNormal = gl.getAttribLocation(shaderProgram, "vNormal");
+	gl.enableVertexAttribArray(shaderProgram.vNormal);
 	
+	//locations
+	shaderProgram.loc_AmbientProduct = gl.getUniformLocation(shaderProgram, "AmbientProduct");
+	shaderProgram.loc_DiffuseProduct = gl.getUniformLocation(shaderProgram, "DiffuseProduct");
+	shaderProgram.loc_SpecularProduct = gl.getUniformLocation(shaderProgram, "SpecularProduct");
+	
+	shaderProgram.loc_Eye = gl.getUniformLocation(shaderProgram, "Eye");
+	shaderProgram.loc_Shininess = gl.getUniformLocation(shaderProgram, "Shininess");
+	
+	shaderProgram.loc_ModelView = gl.getUniformLocation(shaderProgram, "ModelView");
+	shaderProgram.loc_Projection = gl.getUniformLocation(shaderProgram, "Projection");
+	shaderProgram.loc_LightPosition = gl.getUniformLocation(shaderProgram, "LightPosition");
 }
-
 
 function getShader(gl, id) {
 	var shaderScript, theSource, currentChild, shader;
@@ -194,6 +322,15 @@ function getShader(gl, id) {
 	return shader;
 }
 
+function init(){
+
+	light.position  = $V([0.0, 0.0, 2.0, 1.0]);
+	light.ambient   = $V([0.2, 0.2, 0.2, 1.0]);
+	light.diffuse   = $V([1.0, 1.0, 1.0, 1.0]);
+	light.specular  = $V([1.0, 1.0, 1.0, 1.0]);
+
+}
+
 function drawScene() {
 	gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
@@ -202,20 +339,32 @@ function drawScene() {
 	loadIdentity();
 	mvTranslate([0.0, 0.0, -5.0]);
 	
+	var objectsLength = objects.length;
+	for(var i = 0; i < objectsLength; ++i){
+	
+		var obj = objects[i];
+	
+		gl.bindBuffer(gl.ARRAY_BUFFER, obj.positionBuffer);
+		gl.vertexAttribPointer(shaderProgram.vPosition, obj.positionBuffer.itemSize, gl.FLOAT, false, 0, 0);
 
-	gl.bindBuffer(gl.ARRAY_BUFFER, spherePositionBuffer);
-    gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, spherePositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+		gl.bindBuffer(gl.ARRAY_BUFFER, obj.normalBuffer);
+		gl.vertexAttribPointer(shaderProgram.vNormal, obj.normalBuffer.itemSize, gl.FLOAT, false, 0, 0);
+		
+		gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, obj.indexBuffer);
+		
+		mvPushMatrix();
+		mvTranslate(obj.translate);
+		
+		setObjectProperties();
+		setUniforms();
+	
+		gl.drawElements(gl.TRIANGLES, obj.indexBuffer.numItems, gl.UNSIGNED_SHORT, 0);
+		
+		mvPopMatrix();
+	
+	}
+	
 
-
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, sphereIndexBuffer);
-    setMatrixUniforms();
-	
-	var cUniform = gl.getUniformLocation(shaderProgram, "vColor");
-	gl.uniform4f(cUniform, 1.0, 1.0, 0.0, 1.0);
-	
-    gl.drawElements(gl.LINE_STRIP, sphereIndexBuffer.numItems, gl.UNSIGNED_SHORT, 0);
-	
-	
 }
 
 function loadIdentity() {
@@ -236,6 +385,15 @@ function setMatrixUniforms() {
 
   var mvUniform = gl.getUniformLocation(shaderProgram, "uMVMatrix");
   gl.uniformMatrix4fv(mvUniform, false, new Float32Array(mvMatrix.flatten()));
+  
+  gl.uniform4v
+}
+
+function setObjectProperties(obj){
+	
+	gl.uniform4f(shaderProgram.loc_AmbientProduct, light.am
+
+
 }
 
 var mvMatrixStack = [];
