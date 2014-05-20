@@ -36,7 +36,7 @@ function start() {
 
 	init();
 		
-	centerObj = genSphere(0.75, 30, 30);
+	centerObj = genSphere(0.5, 30, 30);
 	centerObj.ambient = vec4.fromValues(1.0, 0.0, 1.0, 1.0);
 	centerObj.diffuse = vec4.fromValues(1.0, 0.5, 0.0, 1.0);
 	centerObj.specular = vec4.fromValues(1.0, 0.5, 0.0, 1.0);
@@ -48,23 +48,25 @@ function start() {
 	
 	objects.push(centerObj);
 	
-	arm1Obj = genCylinder(6, 0.75, 30, 30);
+	arm1Obj = genCylinder(6, 0.5, 30, 30);
 	arm1Obj.ambient = vec4.fromValues(1.0, 0.0, 1.0, 1.0);
 	arm1Obj.diffuse = vec4.fromValues(1.0, 0.5, 0.0, 1.0);
 	arm1Obj.specular = vec4.fromValues(1.0, 0.5, 0.0, 1.0);
 	arm1Obj.shininess = 400.0;
 	arm1Obj.transform = mat4.create();
 	mat4.identity(arm1Obj.transform);
-
+	
+	mat4.rotateZ(arm1Obj.transform, arm1Obj.transform, Math.PI/2);
+	
 	arm1Obj.name = "arm1";
 	
 	arm1Obj.pred = centerObj;
 	arm1Obj.pred_ang = 0.0;
-	arm1Obj.pred_dis = 0.0;
+	arm1Obj.pred_dis = vec3.fromValues(0.0, 0.0, 0.0);
 	
 	objects.push(arm1Obj);
 	
-	sphere1Obj = genSphere(.75, 30, 30);
+	sphere1Obj = genSphere(.5, 30, 30);
 	sphere1Obj.ambient = vec4.fromValues(1.0, 0.0, 1.0, 1.0);
 	sphere1Obj.diffuse = vec4.fromValues(1.0, 0.5, 0.0, 1.0);
 	sphere1Obj.specular = vec4.fromValues(1.0, 0.5, 0.0, 1.0);
@@ -76,11 +78,11 @@ function start() {
 	
 	sphere1Obj.pred = arm1Obj;
 	sphere1Obj.pred_ang = 0.0;
-	sphere1Obj.pred_dis = 6.0;
+	sphere1Obj.pred_dis = vec3.fromValues(6.0, 0.0, 0.0);
 	
 	objects.push(sphere1Obj);
 	
-	arm2Obj = genCylinder(6, 0.75, 30, 30);
+	arm2Obj = genCylinder(6, 0.5, 30, 30);
 	arm2Obj.ambient = vec4.fromValues(1.0, 0.0, 1.0, 1.0);
 	arm2Obj.diffuse = vec4.fromValues(1.0, 0.5, 0.0, 1.0);
 	arm2Obj.specular = vec4.fromValues(1.0, 0.5, 0.0, 1.0);
@@ -88,15 +90,17 @@ function start() {
 	arm2Obj.transform = mat4.create();
 	mat4.identity(arm2Obj.transform);
 	
+	mat4.rotateZ(arm2Obj.transform, arm2Obj.transform, Math.PI/2);
+	
 	arm2Obj.name = "arm2";
 	
 	arm2Obj.pred = arm1Obj;
 	arm2Obj.pred_ang = 0.0;
-	arm2Obj.pred_dis = 6.0;
+	arm2Obj.pred_dis = vec3.fromValues(6.0, 0.0, 0.0);
 	
 	objects.push(arm2Obj);
 	
-	sphere2Obj = genSphere(.75, 30, 30);
+	sphere2Obj = genSphere(.5, 30, 30);
 	sphere2Obj.ambient = vec4.fromValues(1.0, 0.0, 1.0, 1.0);
 	sphere2Obj.diffuse = vec4.fromValues(1.0, 0.5, 0.0, 1.0);
 	sphere2Obj.specular = vec4.fromValues(1.0, 0.5, 0.0, 1.0);
@@ -108,7 +112,7 @@ function start() {
 	
 	sphere2Obj.pred = arm2Obj;
 	sphere2Obj.pred_ang = 0.0;
-	sphere2Obj.pred_dis = 6.0;
+	sphere2Obj.pred_dis = vec3.fromValues(6.0, 0.0, 0.0);
 	
 	objects.push(sphere2Obj);
 	
@@ -120,7 +124,7 @@ function start() {
 	el1.addEventListener("input", function(){arm1Obj.pred_ang = el1.value * (Math.PI / 180);}, false);
 	el2.addEventListener("input", function(){arm2Obj.pred_ang = el2.value * (Math.PI / 180);}, false);
 	
-	canvas.addEventListener("mousemove", relMouseCoords, false);
+	canvas.addEventListener("click", relMouseCoords, false);
 	
 	HTMLCanvasElement.prototype.relMouseCoords = relMouseCoords;
 	
@@ -484,7 +488,7 @@ function animateScene(){
 	el1.value = arm1Obj.pred_ang * (180 / Math.PI);
 	el2.value = arm2Obj.pred_ang * (180 / Math.PI);
 	
-	//jacob_1(arm1Obj, arm2Obj, canvasX, canvasY, 0);
+	jacob_1(arm1Obj, arm2Obj, canvasX, canvasY, 0);
 	
 
 }
@@ -508,6 +512,8 @@ function setObjectProperties(obj){
 	mat4.identity(result);
 	
 	createPredChain(result, obj);
+	
+	mat4.multiply(result, obj.transform, result);
 	
 	gl.uniformMatrix4fv(shaderProgram.loc_TransformP, false, result);
 	
@@ -543,15 +549,15 @@ function createPredChain(out, obj){
 	if(obj.hasOwnProperty('pred')){
 	
 			
-		mat4.translate(out, out, vec3.fromValues(0.0, obj.pred_dis, 0.0));
+		mat4.translate(out, out, obj.pred_dis);
 		mat4.rotateZ(out, out, obj.pred_ang);		
 	
 		createPredChain(previous, obj.pred);
 	
 		mat4.multiply(out, previous, out);
 		
-	} else if((obj.hasOwnProperty('transform'))){
-		out = obj.transform;
+	} else {
+		out = previous;
 	}
 	
 }
@@ -565,17 +571,16 @@ function jacob_1(obj1, obj2, x, y, limit){
 	
 	++limit;
 
-
 	//convert to degrees
 	
-	var ang1 = obj1.pred_ang * (180/ Math.PI);
+	var ang1 = obj1.pred_ang * (180/ Math.PI) + 90;
 	var ang2 = obj2.pred_ang * (180/ Math.PI);
 	
 	
 	//compute x approx and y approx
 
-	var x_a = X(6, ang1,ang2);
-	var y_a = Y(6,ang1,ang2);
+	var x_a = X(6, ang1, ang2);
+	var y_a = Y(6, ang1, ang2);
 
 	//check to see if we are done
 	
@@ -592,10 +597,15 @@ function jacob_1(obj1, obj2, x, y, limit){
 	var e2 = .05;
 	//otherwise compute our partial derivatives using central difference 
 	
-	var x_theta1 = (X(6,ang1 + e2,ang2) - X(6,ang1 - e2,ang2))/(2 * e2);
-	var x_theta2 = (X(6,ang1,ang2 + e2) - X(6,ang1,ang2 - e2))/(2 * e2);
-	var y_theta1 = (Y(6,ang1 + e2,ang2) - Y(6,ang1 - e2,ang2))/(2 * e2);
-	var y_theta2 = (Y(6,ang1,ang2 + e2) - Y(6,ang1,ang2 - e2))/(2 * e2);
+	// var x_theta1 = (X(6,ang1 + e2,ang2) - X(6,ang1 - e2,ang2))/(2 * e2);
+	// var x_theta2 = (X(6,ang1,ang2 + e2) - X(6,ang1,ang2 - e2))/(2 * e2);
+	// var y_theta1 = (Y(6,ang1 + e2,ang2) - Y(6,ang1 - e2,ang2))/(2 * e2);
+	// var y_theta2 = (Y(6,ang1,ang2 + e2) - Y(6,ang1,ang2 - e2))/(2 * e2);
+	
+	var x_theta1 = (X(6,ang1 + e2,ang2) - X(6,ang1, ang2))/(e2);
+	var x_theta2 = (X(6,ang1,ang2 + e2) - X(6,ang1, ang2))/(e2);
+	var y_theta1 = (Y(6,ang1 + e2,ang2) - Y(6,ang1, ang2))/(e2);
+	var y_theta2 = (Y(6,ang1,ang2 + e2) - Y(6,ang1, ang2))/(e2);
 	
 	
 	// solve systems
@@ -629,12 +639,12 @@ function jacob_1(obj1, obj2, x, y, limit){
 
 function X(r, ang1, ang2){
 
-	return r * Math.sin((Math.PI/180) * ang1) + r * Math.sin((Math.PI/180) * (ang2 + ang1)); 
+	return r * Math.cos((Math.PI/180) * ang1) + r * Math.cos((Math.PI/180) * (ang2 + ang1)); 
 }
 
 function Y(r, ang1, ang2){
 
-	return r * Math.cos((Math.PI/180) * ang1) + r * Math.cos((Math.PI/180) * (ang2 + ang1)); 
+	return r * Math.sin((Math.PI/180) * ang1) + r * Math.sin((Math.PI/180) * (ang2 + ang1)); 
 }
 
 function relMouseCoords(event){
@@ -668,7 +678,7 @@ function relMouseCoords(event){
 	
 	var inverse = mat4.create();
 	
-	mat4.multiply(inverse, modelViewMatrix, perspectiveMatrix);
+	mat4.multiply(inverse, perspectiveMatrix, modelViewMatrix);
 	
 	mat4.invert(inverse, inverse);
 	
@@ -695,7 +705,9 @@ function relMouseCoords(event){
 	
 	vec3.add(v, v, point_near)
 	
-	canvasX = v[0];
+	//something flips somewhere
+	
+	canvasX = -v[0];
 	canvasY = v[1];
 	
 	var el1 = document.getElementById("canvasx");
