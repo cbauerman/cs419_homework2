@@ -56,7 +56,7 @@ function start() {
 	arm1Obj.transform = mat4.create();
 	mat4.identity(arm1Obj.transform);
 	
-	mat4.rotateZ(arm1Obj.transform, arm1Obj.transform, Math.PI/2);
+	mat4.rotateZ(arm1Obj.transform, arm1Obj.transform, -Math.PI/2);
 	
 	arm1Obj.name = "arm1";
 	
@@ -90,7 +90,7 @@ function start() {
 	arm2Obj.transform = mat4.create();
 	mat4.identity(arm2Obj.transform);
 	
-	mat4.rotateZ(arm2Obj.transform, arm2Obj.transform, Math.PI/2);
+	mat4.rotateZ(arm2Obj.transform, arm2Obj.transform, -Math.PI/2);
 	
 	arm2Obj.name = "arm2";
 	
@@ -135,8 +135,6 @@ function init(){
 
 	canvas = document.getElementById("glcanvas");
 	
-	
-	
 	gl = initWebGL(canvas);      // Initialize the GL context
 
 	// Only continue if WebGL is available and working
@@ -151,7 +149,7 @@ function init(){
 
 	initShaders();
 
-	camera.eye = vec3.fromValues(0.0, 0.0, -25.0);
+	camera.eye = vec3.fromValues(0.0, 0.0, 25.0);
 	camera.center = vec3.fromValues(0.0, 0.0, 0.0);
 	camera.up = vec3.fromValues(0.0, 1.0, 0.0);
 
@@ -162,7 +160,7 @@ function init(){
 	mat4.perspective(perspectiveMatrix, 45, 1.0, 0.1, 1000.0);
 	mat4.lookAt(modelViewMatrix, camera.eye, camera.center, camera.up);
 	
-	light.position  = vec4.fromValues(0.0, 0.0, -35.0, 1.0);
+	light.position  = vec4.fromValues(0.0, 0.0, 35.0, 1.0);
 	light.ambient   = vec4.fromValues(0.2, 0.2, 0.2, 1.0);
 	light.diffuse   = vec4.fromValues(1.0, 1.0, 1.0, 1.0);
 	light.specular  = vec4.fromValues(1.0, 1.0, 1.0, 1.0);
@@ -518,12 +516,10 @@ function setObjectProperties(obj){
 	var fin = mat4.create();
 	mat4.identity(fin);
 	
-	
 	mat4.multiply(fin, result, fin);
 	mat4.multiply(fin, result_in, fin);
 	mat4.multiply(fin, obj.transform, fin);
 	mat4.multiply(fin, result, fin);
-	
 	
 	gl.uniformMatrix4fv(shaderProgram.loc_TransformP, false, fin);
 	
@@ -583,7 +579,7 @@ function jacob_1(obj1, obj2, x, y, limit){
 
 	//convert to degrees
 	
-	var ang1 = obj1.pred_ang * (180/ Math.PI) + 90;
+	var ang1 = obj1.pred_ang * (180/ Math.PI) ;
 	var ang2 = obj2.pred_ang * (180/ Math.PI);
 	
 	
@@ -715,9 +711,7 @@ function relMouseCoords(event){
 	
 	vec3.add(v, v, point_near)
 	
-	//something flips somewhere
-	
-	canvasX = -v[0];
+	canvasX = v[0];
 	canvasY = v[1];
 	
 	var el1 = document.getElementById("canvasx");
