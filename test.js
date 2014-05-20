@@ -6,14 +6,119 @@ var spherepositionBuffer;
 var sphereindexBuffer;
 
 var objects = [];
-
 var light = {};
+var camera = {};
+
+var centerObj;
+var arm1Obj;
+var arm2Obj;
+var sphere1Obj;
+var sphere2Obj;
+
 
 function run(){
 	drawScene();
+	animateScene();
 }
 
+//matricies
+var perspectiveMatrix
+var modelViewMatrix;
+
 function start() {
+
+	init();
+		
+	centerObj = genSphere(0.75, 30, 30);
+	centerObj.ambient = vec4.fromValues(1.0, 0.0, 1.0, 1.0);
+	centerObj.diffuse = vec4.fromValues(1.0, 0.5, 0.0, 1.0);
+	centerObj.specular = vec4.fromValues(1.0, 0.5, 0.0, 1.0);
+	centerObj.shininess = 400.0; 
+	centerObj.transform = mat4.create();
+	mat4.identity(centerObj.transform);
+	
+	centerObj.name = "center";
+	
+	objects.push(centerObj);
+	
+	arm1Obj = genCylinder(6, 0.75, 30, 30);
+	arm1Obj.ambient = vec4.fromValues(1.0, 0.0, 1.0, 1.0);
+	arm1Obj.diffuse = vec4.fromValues(1.0, 0.5, 0.0, 1.0);
+	arm1Obj.specular = vec4.fromValues(1.0, 0.5, 0.0, 1.0);
+	arm1Obj.shininess = 400.0;
+	arm1Obj.transform = mat4.create();
+	mat4.identity(arm1Obj.transform);
+
+	arm1Obj.name = "arm1";
+	
+	arm1Obj.pred = centerObj;
+	arm1Obj.pred_ang = 0.0;
+	arm1Obj.pred_dis = 0.0;
+	
+	objects.push(arm1Obj);
+	
+	sphere1Obj = genSphere(.75, 30, 30);
+	sphere1Obj.ambient = vec4.fromValues(1.0, 0.0, 1.0, 1.0);
+	sphere1Obj.diffuse = vec4.fromValues(1.0, 0.5, 0.0, 1.0);
+	sphere1Obj.specular = vec4.fromValues(1.0, 0.5, 0.0, 1.0);
+	sphere1Obj.shininess = 400.0;
+	sphere1Obj.transform = mat4.create();
+	mat4.identity(sphere1Obj.transform);
+	
+	sphere1Obj.name = "sphere1";
+	
+	sphere1Obj.pred = arm1Obj;
+	sphere1Obj.pred_ang = 0.0;
+	sphere1Obj.pred_dis = 6.0;
+	
+	objects.push(sphere1Obj);
+	
+	arm2Obj = genCylinder(6, 0.75, 30, 30);
+	arm2Obj.ambient = vec4.fromValues(1.0, 0.0, 1.0, 1.0);
+	arm2Obj.diffuse = vec4.fromValues(1.0, 0.5, 0.0, 1.0);
+	arm2Obj.specular = vec4.fromValues(1.0, 0.5, 0.0, 1.0);
+	arm2Obj.shininess = 400.0;
+	arm2Obj.transform = mat4.create();
+	mat4.identity(arm2Obj.transform);
+	
+	arm2Obj.name = "arm2";
+	
+	arm2Obj.pred = arm1Obj;
+	arm2Obj.pred_ang = 0.0;
+	arm2Obj.pred_dis = 6.0;
+	
+	objects.push(arm2Obj);
+	
+	sphere2Obj = genSphere(.75, 30, 30);
+	sphere2Obj.ambient = vec4.fromValues(1.0, 0.0, 1.0, 1.0);
+	sphere2Obj.diffuse = vec4.fromValues(1.0, 0.5, 0.0, 1.0);
+	sphere2Obj.specular = vec4.fromValues(1.0, 0.5, 0.0, 1.0);
+	sphere2Obj.shininess = 400.0;
+	sphere2Obj.transform = mat4.create();
+	mat4.identity(sphere2Obj.transform);
+	
+	sphere2Obj.name = "sphere2";
+	
+	sphere2Obj.pred = arm2Obj;
+	sphere2Obj.pred_ang = 0.0;
+	sphere2Obj.pred_dis = 6.0;
+	
+	objects.push(sphere2Obj);
+	
+	//event listeners
+	
+	var el1 = document.getElementById("angle1box");
+	var el2 = document.getElementById("angle2box");
+	
+	el1.addEventListener("input", function(){arm1Obj.pred_ang = el1.value * (Math.PI / 180);}, false);
+	el2.addEventListener("input", function(){arm2Obj.pred_ang = el2.value * (Math.PI / 180);}, false);
+	
+	
+	setInterval(run, 15);
+}
+
+function init(){
+
 	var canvas = document.getElementById("glcanvas");
 	
 	gl = initWebGL(canvas);      // Initialize the GL context
@@ -26,61 +131,60 @@ function start() {
 		gl.depthFunc(gl.LEQUAL);                                // Near things obscure far things
 		gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);      // Clear the color as well as the depth buffer.
 	}
-	
+
+
 	initShaders();
 
-	init();
-	
-	objects.push(genSphere(30, 30, 1));
-	objects[0].translate = [0.0, 0.0, 0.0];
-	objects[0].ambient = $V([1.0, 0.0, 1.0, 1.0]);
-	objects[0].diffuse = $V([1.0, 0.5, 0.0, 1.0]);
-	objects[0].specular = $V([1.0, 0.5, 0.0, 1.0]);
-	objects[0].shininess = 400.0;
-	//objects.push(genCylinder(2, 1, 30, 30));
-	//objects[1].translate = [0.0, 1.0, 0.0];
-	
+	camera.eye = vec3.fromValues(0.0, 0.0, -25.0);
+	camera.center = vec3.fromValues(0.0, 0.0, 0.0);
+	camera.up = vec3.fromValues(0.0, 1.0, 0.0);
 
-	runProgram();
+
+	perspectiveMatrix = mat4.create();
+	modelViewMatrix = mat4.create();
+
+	mat4.perspective(perspectiveMatrix, 45, 1.0, 0.1, 1000.0);
+	mat4.lookAt(modelViewMatrix, camera.eye, camera.center, camera.up);
+	
+	light.position  = vec4.fromValues(0.0, 0.0, -35.0, 1.0);
+	light.ambient   = vec4.fromValues(0.2, 0.2, 0.2, 1.0);
+	light.diffuse   = vec4.fromValues(1.0, 1.0, 1.0, 1.0);
+	light.specular  = vec4.fromValues(1.0, 1.0, 1.0, 1.0);
+
 }
-
-function runProgram(){
-
-	var counter = 0;
-	
-	var looper = setInterval(function(){
-		counter++
-		run();
-		if(counter >= 750){
-			clearInterval(looper);
-		}
-	
-	}, 15);
-	
-}
-
 
 function genCylinder(height, radius, v_lines, h_lines)
 {
 	var cyl = {};
 	cyl.positionBuffer = gl.createBuffer();
-	gl.bindBuffer(gl.ARRAY_BUFFER, cyl.positionBuffer);
+	cyl.normalBuffer = gl.createBuffer();
 	cyl.indexBuffer = gl.createBuffer();
-	gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cyl.indexBuffer);
+	
 
 	var cylPositionArray = [];
+	var cylNormalArray = [];
 	var cylIndexArray = [];
 	
-	var indAcc = 0;
+
 	var h;
-	//triangle fans at top
+	var normalX;
+	var normalZ;
 	
+	//body of cylinder
 	for(var vert = 0; vert <= v_lines; ++vert){
-		h = vert/v_lines * height - height/2;
+		h = vert/v_lines * height;
 		for(var hor = 0; hor < h_lines; ++hor){
-			cylPositionArray.push(radius * Math.cos((hor/h_lines) * 2 * Math.PI ));
+			normalX = Math.cos((hor/h_lines) * 2 * Math.PI );
+			normalZ = Math.sin((hor/h_lines) * 2 * Math.PI );
+			
+			cylPositionArray.push(radius * normalX);
 			cylPositionArray.push(h);
-			cylPositionArray.push(radius * Math.sin((hor/h_lines) * 2 * Math.PI ));
+			cylPositionArray.push(radius * normalZ);
+			
+			cylNormalArray.push(normalX);
+			cylNormalArray.push(0.0);
+			cylNormalArray.push(normalZ);
+			
 		}
 	}
 
@@ -108,13 +212,21 @@ function genCylinder(height, radius, v_lines, h_lines)
 	
 	//top center point
 	cylPositionArray.push(0.0);
-	cylPositionArray.push(-height/2);
 	cylPositionArray.push(0.0);
+	cylPositionArray.push(0.0);
+	
+	cylNormalArray.push(0.0);
+	cylNormalArray.push(1.0);
+	cylNormalArray.push(0.0);
 	
 	//bottom center point
 	cylPositionArray.push(0.0);
-	cylPositionArray.push(height/2);
+	cylPositionArray.push(height);
 	cylPositionArray.push(0.0);
+	
+	cylNormalArray.push(0.0);
+	cylNormalArray.push(-1.0);
+	cylNormalArray.push(0.0);
 	
 	//top fan
 	for(var i = 0; i < (h_lines - 1); ++i){
@@ -140,11 +252,18 @@ function genCylinder(height, radius, v_lines, h_lines)
 	cylIndexArray.push(adjust + h_lines - 1);
 	cylIndexArray.push(adjust);
 
-	
+	gl.bindBuffer(gl.ARRAY_BUFFER, cyl.positionBuffer);
 	gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(cylPositionArray), gl.STATIC_DRAW);
 	cyl.positionBuffer.itemSize = 3;
 	cyl.positionBuffer.numItems = cylPositionArray.length / 3;
 
+	gl.bindBuffer(gl.ARRAY_BUFFER, cyl.normalBuffer);
+	gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(cylNormalArray), gl.STATIC_DRAW);
+	cyl.normalBuffer.itemSize = 3;
+	cyl.normalBuffer.numItems = cylNormalArray.length / 3;
+	
+	
+	gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cyl.indexBuffer);
 	gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(cylIndexArray), gl.STATIC_DRAW);
 	cyl.indexBuffer.itemSize = 1;
 	cyl.indexBuffer.numItems = cylIndexArray.length;
@@ -152,16 +271,13 @@ function genCylinder(height, radius, v_lines, h_lines)
 	return cyl;
 }
 
-function genSphere(latitude, longitude, radius)
+function genSphere(radius, latitude, longitude)
 {
 	var sphere = {};
 	sphere.positionBuffer = gl.createBuffer();
-	gl.bindBuffer(gl.ARRAY_BUFFER, sphere.positionBuffer);
 	sphere.normalBuffer = gl.createBuffer();
-	gl.bindBuffer(gl.ARRAY_BUFFER, sphere.normalBuffer);
 	sphere.indexBuffer = gl.createBuffer();
-	gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, sphere.indexBuffer);
-
+	
 	var spherePositionArray = [];
 	var sphereIndexArray = [];
 	var sphereNormalArray = [];
@@ -184,9 +300,9 @@ function genSphere(latitude, longitude, radius)
             spherePositionArray.push(radius * y);
             spherePositionArray.push(radius * z);
 			
-			sphereIndexArray.push(x);
-			sphereIndexArray.push(y);
-			sphereIndexArray.push(z);
+			sphereNormalArray.push(x);
+			sphereNormalArray.push(y);
+			sphereNormalArray.push(z);
 	
 		}
 	}
@@ -207,15 +323,17 @@ function genSphere(latitude, longitude, radius)
 		}
 	}
 		
-		
+	gl.bindBuffer(gl.ARRAY_BUFFER, sphere.positionBuffer);	
 	gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(spherePositionArray), gl.STATIC_DRAW);
 	sphere.positionBuffer.itemSize = 3;
 	sphere.positionBuffer.numItems = spherePositionArray.length / 3;
 	
+	gl.bindBuffer(gl.ARRAY_BUFFER, sphere.normalBuffer);
 	gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(sphereNormalArray), gl.STATIC_DRAW);
 	sphere.normalBuffer.itemSize = 3;
-	sphere.normalBuffer.numItems = sphereNormalnArray.length / 3;
+	sphere.normalBuffer.numItems = sphereNormalArray.length / 3;
 
+	gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, sphere.indexBuffer);
 	gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(sphereIndexArray), gl.STATIC_DRAW);
 	sphere.indexBuffer.itemSize = 1;
 	sphere.indexBuffer.numItems = sphereIndexArray.length;
@@ -241,7 +359,6 @@ function initWebGL(canvas) {
 
 	return gl;
 }
-
 
 function initShaders() {
 	var fragmentShader = getShader(gl, "shader-fs-sphere");
@@ -277,6 +394,8 @@ function initShaders() {
 	
 	shaderProgram.loc_ModelView = gl.getUniformLocation(shaderProgram, "ModelView");
 	shaderProgram.loc_Projection = gl.getUniformLocation(shaderProgram, "Projection");
+	shaderProgram.loc_TransformP = gl.getUniformLocation(shaderProgram, "TransformP");
+	shaderProgram.loc_TransformN = gl.getUniformLocation(shaderProgram, "TransformN");
 	shaderProgram.loc_LightPosition = gl.getUniformLocation(shaderProgram, "LightPosition");
 }
 
@@ -322,23 +441,10 @@ function getShader(gl, id) {
 	return shader;
 }
 
-function init(){
-
-	light.position  = $V([0.0, 0.0, 2.0, 1.0]);
-	light.ambient   = $V([0.2, 0.2, 0.2, 1.0]);
-	light.diffuse   = $V([1.0, 1.0, 1.0, 1.0]);
-	light.specular  = $V([1.0, 1.0, 1.0, 1.0]);
-
-}
-
 function drawScene() {
+
 	gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-	perspectiveMatrix = makePerspective(45, 1.0, 0.1, 1000.0);
-
-	loadIdentity();
-	mvTranslate([0.0, 0.0, -5.0]);
-	
 	var objectsLength = objects.length;
 	for(var i = 0; i < objectsLength; ++i){
 	
@@ -351,78 +457,178 @@ function drawScene() {
 		gl.vertexAttribPointer(shaderProgram.vNormal, obj.normalBuffer.itemSize, gl.FLOAT, false, 0, 0);
 		
 		gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, obj.indexBuffer);
-		
-		mvPushMatrix();
-		mvTranslate(obj.translate);
-		
-		setObjectProperties();
+				
+		setObjectProperties(obj);
 		setUniforms();
 	
 		gl.drawElements(gl.TRIANGLES, obj.indexBuffer.numItems, gl.UNSIGNED_SHORT, 0);
-		
-		mvPopMatrix();
-	
+			
 	}
+}
+
+function animateScene(){
+
+	var el1 = document.getElementById("angle1box");
+	var el2 = document.getElementById("angle2box");
 	
+	el1.value = arm1Obj.pred_ang * (180 / Math.PI);
+	el2.value = arm2Obj.pred_ang * (180 / Math.PI);
 
 }
 
-function loadIdentity() {
-  mvMatrix = Matrix.I(4);
-}
-
-function multMatrix(m) {
-  mvMatrix = mvMatrix.x(m);
-}
-
-function mvTranslate(v) {
-  multMatrix(Matrix.Translation($V([v[0], v[1], v[2]])).ensure4x4());
-}
-
-function setMatrixUniforms() {
-  var pUniform = gl.getUniformLocation(shaderProgram, "uPMatrix");
-  gl.uniformMatrix4fv(pUniform, false, new Float32Array(perspectiveMatrix.flatten()));
-
-  var mvUniform = gl.getUniformLocation(shaderProgram, "uMVMatrix");
-  gl.uniformMatrix4fv(mvUniform, false, new Float32Array(mvMatrix.flatten()));
-  
-  gl.uniform4v
-}
 
 function setObjectProperties(obj){
 	
-	gl.uniform4f(shaderProgram.loc_AmbientProduct, light.am
+	var result = vec4.create();
+	
+	vec4.multiply(result, light.ambient, obj.ambient);
+	gl.uniform4fv(shaderProgram.loc_AmbientProduct, result);
+	
+	vec4.multiply(result, light.diffuse, obj.diffuse);
+	gl.uniform4fv(shaderProgram.loc_DiffuseProduct, result);
+	
+	vec4.multiply(result, light.specular, obj.specular);
+	gl.uniform4fv(shaderProgram.loc_SpecularProduct, result);
+
+	gl.uniform1f(shaderProgram.loc_Shininess, obj.shininess);
+	
+	result = mat4.create();
+	mat4.identity(result);
+	
+
+	createPredChain(result, obj);
+	
+
+	
+	gl.uniformMatrix4fv(shaderProgram.loc_TransformP, false, result);
+	
+	mat4.invert(result, result);
+	mat4.transpose(result, result);
+	
+	gl.uniformMatrix4fv(shaderProgram.loc_TransformN, false, result);
+
+	
+}
+
+function setUniforms(){
+
+	gl.uniformMatrix4fv(shaderProgram.loc_ModelView, false, modelViewMatrix);
+	gl.uniformMatrix4fv(shaderProgram.loc_Projection, false, perspectiveMatrix);
+	
+	gl.uniform4fv(shaderProgram.loc_LightPosition, light.position);
+	gl.uniform3fv(shaderProgram.loc_Eye, camera.eye);
+	
+}
+
+
+function hasOwnProperty(obj, prop) {
+    var proto = obj.__proto__ || obj.constructor.prototype;
+    return (prop in obj) &&
+        (!(prop in proto) || proto[prop] !== obj[prop]);
+}
+
+
+function createPredChain(out, obj){
+
+	var previous = mat4.create();
+	mat4.identity(previous);
+
+	if(obj.hasOwnProperty('pred')){
+	
+			
+		mat4.translate(out, out, vec3.fromValues(0.0, obj.pred_dis, 0.0));
+		mat4.rotateZ(out, out, obj.pred_ang);		
+	
+		createPredChain(previous, obj.pred);
+	
+		mat4.multiply(out, previous, out);
+		
+	} else if((obj.hasOwnProperty('transform'))){
+		out = obj.transform;
+	}
+	
+}
+
+function jacob_1(obj1, obj2, x, y, limit){
+
+	//check to see how far we have iterated
+	if(limit > 60){
+		return false;
+	}
+	
+	++limit;
+
+
+	//convert to degrees
+	
+	var ang1 = obj1.pred_ang * (180/ Math.PI);
+	var ang2 = obj2.pred_ang * (180/ Math.PI);
+	
+	
+	//compute x approx and y approx
+
+	var x_a = X(6, ang1,ang2);
+	var y_a = Y(6,ang1,ang2);
+
+	//check to see if we are done
+	
+	var x_diff = x - x_a;
+	var y_diff = y - y_a;
+
+
+	var e = .005;
+	
+	if(Math.abs(x_diff) < e &&  Math.abs(y_diff) < e){
+		return true;
+	}
+	
+	var e2 = .05;
+	//otherwise compute our partial derivatives using central difference 
+	
+	var x_theta1 = (X(6,ang1 + e2,ang2) - X(6,ang1 - e2,ang2))/(2 * e2);
+	var x_theta2 = (X(6,ang1,ang2 + e2) - X(6,ang1,ang2 - e2))/(2 * e2);
+	var y_theta1 = (Y(6,ang1 + e2,ang2) - Y(6,ang1 - e2,ang2))/(2 * e2);
+	var y_theta2 = (Y(6,ang1,ang2 + e2) - Y(6,ang1,ang2 - e2))/(2 * e2);
+	
+	
+	// solve systems
+	
+	var d_theta1 = (x_diff * x_theta1 + y_diff * y_theta1)/(x_theta1 * x_theta1 + y_theta1 * y_theta1)
+	var d_theta2 = (x_diff * x_theta2 + y_diff * y_theta2)/(x_theta2 * x_theta2 + y_theta2 * y_theta2)
+
+	if(Number.isNaN(d_theta1)){
+		d_theta1 = 0;
+	}
+	
+	if(Number.isNaN(d_theta2)){
+		d_theta2 = 0;
+	}
+	
+	
+	
+	obj1.pred_ang += (Math.PI/180) * d_theta1;
+	obj2.pred_ang += (Math.PI/180) * d_theta2;
+	
+	obj1.pred_ang = obj1.pred_ang % (2 * Math.PI);
+	obj2.pred_ang = obj2.pred_ang % (2 * Math.PI);
+	
+	
+	drawScene();
+
+	return jacob_1(obj1, obj2, x, y, limit);
 
 
 }
 
-var mvMatrixStack = [];
+function X(r, ang1, ang2){
 
-function mvPushMatrix(m) {
-  if (m) {
-    mvMatrixStack.push(m.dup());
-    mvMatrix = m.dup();
-  } else {
-    mvMatrixStack.push(mvMatrix.dup());
-  }
+	return r * Math.sin((Math.PI/180) * ang1) + r * Math.sin((Math.PI/180) * (ang2 + ang1)); 
 }
 
-function mvPopMatrix() {
-  if (!mvMatrixStack.length) {
-    throw("Can't pop from an empty matrix stack.");
-  }
-  
-  mvMatrix = mvMatrixStack.pop();
-  return mvMatrix;
-}
+function Y(r, ang1, ang2){
 
-function mvRotate(angle, v) {
-  var inRadians = angle * Math.PI / 180.0;
-  
-  var m = Matrix.Rotation(inRadians, $V([v[0], v[1], v[2]])).ensure4x4();
-  multMatrix(m);
+	return r * Math.cos((Math.PI/180) * ang1) + r * Math.cos((Math.PI/180) * (ang2 + ang1)); 
 }
-
 
 
 
