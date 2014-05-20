@@ -513,9 +513,19 @@ function setObjectProperties(obj){
 	
 	createPredChain(result, obj);
 	
-	mat4.multiply(result, obj.transform, result);
+	var result_in = mat4.create();
+	mat4.invert(result_in, result);
+	var fin = mat4.create();
+	mat4.identity(fin);
 	
-	gl.uniformMatrix4fv(shaderProgram.loc_TransformP, false, result);
+	
+	mat4.multiply(fin, result, fin);
+	mat4.multiply(fin, result_in, fin);
+	mat4.multiply(fin, obj.transform, fin);
+	mat4.multiply(fin, result, fin);
+	
+	
+	gl.uniformMatrix4fv(shaderProgram.loc_TransformP, false, fin);
 	
 	mat4.invert(result, result);
 	mat4.transpose(result, result);
