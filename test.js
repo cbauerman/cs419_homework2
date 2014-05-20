@@ -9,21 +9,28 @@ var objects = [];
 var light = {};
 var camera = {};
 
+var canvas;
+
 var centerObj;
 var arm1Obj;
 var arm2Obj;
 var sphere1Obj;
 var sphere2Obj;
 
+var canvasX = 0.0;
+var canvasY = 0.0;
+
+var screenX = 768;
+var screenY = 768;
+
+//matricies
+var perspectiveMatrix
+var modelViewMatrix;
 
 function run(){
 	drawScene();
 	animateScene();
 }
-
-//matricies
-var perspectiveMatrix
-var modelViewMatrix;
 
 function start() {
 
@@ -113,13 +120,18 @@ function start() {
 	el1.addEventListener("input", function(){arm1Obj.pred_ang = el1.value * (Math.PI / 180);}, false);
 	el2.addEventListener("input", function(){arm2Obj.pred_ang = el2.value * (Math.PI / 180);}, false);
 	
+	canvas.addEventListener("mousemove", relMouseCoords, false);
+	
+	HTMLCanvasElement.prototype.relMouseCoords = relMouseCoords;
 	
 	setInterval(run, 15);
 }
 
 function init(){
 
-	var canvas = document.getElementById("glcanvas");
+	canvas = document.getElementById("glcanvas");
+	
+	
 	
 	gl = initWebGL(canvas);      // Initialize the GL context
 
@@ -153,8 +165,7 @@ function init(){
 
 }
 
-function genCylinder(height, radius, v_lines, h_lines)
-{
+function genCylinder(height, radius, v_lines, h_lines){
 	var cyl = {};
 	cyl.positionBuffer = gl.createBuffer();
 	cyl.normalBuffer = gl.createBuffer();
@@ -271,8 +282,7 @@ function genCylinder(height, radius, v_lines, h_lines)
 	return cyl;
 }
 
-function genSphere(radius, latitude, longitude)
-{
+function genSphere(radius, latitude, longitude){
 	var sphere = {};
 	sphere.positionBuffer = gl.createBuffer();
 	sphere.normalBuffer = gl.createBuffer();
@@ -473,9 +483,11 @@ function animateScene(){
 	
 	el1.value = arm1Obj.pred_ang * (180 / Math.PI);
 	el2.value = arm2Obj.pred_ang * (180 / Math.PI);
+	
+	//jacob_1(arm1Obj, arm2Obj, canvasX, canvasY, 0);
+	
 
 }
-
 
 function setObjectProperties(obj){
 	
@@ -495,10 +507,7 @@ function setObjectProperties(obj){
 	result = mat4.create();
 	mat4.identity(result);
 	
-
 	createPredChain(result, obj);
-	
-
 	
 	gl.uniformMatrix4fv(shaderProgram.loc_TransformP, false, result);
 	
@@ -520,13 +529,11 @@ function setUniforms(){
 	
 }
 
-
 function hasOwnProperty(obj, prop) {
     var proto = obj.__proto__ || obj.constructor.prototype;
     return (prop in obj) &&
         (!(prop in proto) || proto[prop] !== obj[prop]);
 }
-
 
 function createPredChain(out, obj){
 
@@ -630,5 +637,74 @@ function Y(r, ang1, ang2){
 	return r * Math.cos((Math.PI/180) * ang1) + r * Math.cos((Math.PI/180) * (ang2 + ang1)); 
 }
 
+function relMouseCoords(event){
+
+
+	if (event.offsetX !== undefined && event.offsetY !== undefined) { 
+		canvasX = event.offsetX;
+		canvasY = event.offsetY;
+	} else {
+
+		var totalOffsetX = 0;
+		var totalOffsetY = 0;
+		var currentElement = this;
+
+		do{
+			totalOffsetX += currentElement.offsetLeft - currentElement.scrollLeft;
+			totalOffsetY += currentElement.offsetTop - currentElement.scrollTop;
+		}
+		while(currentElement = currentElement.offsetParent)
+
+		canvasX = event.pageX - totalOffsetX;
+		canvasY = event.pageY - totalOffsetY;
+		
+	}
+	
+	//transform mouse coordinates to range 1 to -1
+	canvasX = 2.0 * (canvasX/screenX) - 1.0;
+	canvasY = 1.0 -  2.0 * (canvasY/screenY);
+	
+	
+	
+	var inverse = mat4.create();
+	
+	mat4.multiply(inverse, modelViewMatrix, perspectiveMatrix);
+	
+	mat4.invert(inverse, inverse);
+	
+	var coords1 = vec4.create();
+	var coords2 = vec4.create();
+	
+	vec4.transformMat4(coords1, vec4.fromValues(canvasX, canvasY, -1.0, 1.0), inverse);
+	vec4.transformMat4(coords2, vec4.fromValues(canvasX, canvasY, 1.0, 1.0), inverse);
+	
+	var point_near = vec3.fromValues(coords1[0]/coords1[3], coords1[1]/coords1[3], coords1[2]/coords1[3]);
+	var point_far = vec3.fromValues(coords2[0]/coords2[3], coords2[1]/coords2[3], coords2[2]/coords2[3]);
+	var v = vec3.create();
+	
+	//create vector
+	vec3.sub(v, point_far, point_near);
+	vec3.normalize(v, v);
+	
+	//plane normal
+	var n = vec3.fromValues(0, 0, -1);
+	
+	var t = -vec3.dot(n, point_near)/vec3.dot(v, n);
+
+	vec3.scale(v, v, t);
+	
+	vec3.add(v, v, point_near)
+	
+	canvasX = v[0];
+	canvasY = v[1];
+	
+	var el1 = document.getElementById("canvasx");
+	var el2 = document.getElementById("canvasy");
+	el1.innerHTML = canvasX;
+	el2.innerHTML = canvasY;
+	
+
+    return {x:canvasX, y:canvasY}
+}
 
 
