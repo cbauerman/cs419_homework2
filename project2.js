@@ -27,6 +27,13 @@ var screenY = 768;
 var perspectiveMatrix
 var modelViewMatrix;
 
+var click = false;
+
+var angs;
+var frames;
+
+var alwaysReset = false;
+
 function run(){
 	drawScene();
 	animateScene();
@@ -120,9 +127,11 @@ function start() {
 	
 	var el1 = document.getElementById("angle1box");
 	var el2 = document.getElementById("angle2box");
+	var el3 = document.getElementById("resetBox");
 	
 	el1.addEventListener("input", function(){arm1Obj.pred_ang = el1.value * (Math.PI / 180);}, false);
 	el2.addEventListener("input", function(){arm2Obj.pred_ang = el2.value * (Math.PI / 180);}, false);
+	el3.addEventListener("change", function(){alwaysReset = el3.checked;}, false);
 	
 	canvas.addEventListener("click", relMouseCoords, false);
 	
@@ -480,14 +489,32 @@ function drawScene() {
 
 function animateScene(){
 
-	var el1 = document.getElementById("angle1box");
-	var el2 = document.getElementById("angle2box");
+
 	
-	el1.value = arm1Obj.pred_ang * (180 / Math.PI);
-	el2.value = arm2Obj.pred_ang * (180 / Math.PI);
+
+	if(click){
 	
-	jacob_1(arm1Obj, arm2Obj, canvasX, canvasY, 0);
+		if(alwaysReset){
+			arm1Obj.pred_ang = 0.0;
+			arm2Obj.pred_ang = 0.0;
+		
+			drawScene();
+		}
 	
+		angs = jacob_1(arm1Obj.pred_ang, arm2Obj.pred_ang, canvasX, canvasY, 0);
+		frames = 300;
+	}
+	
+	if(frames >= 0){
+		animate(arm1Obj, arm2Obj);
+		
+		var el1 = document.getElementById("angle1box");
+		var el2 = document.getElementById("angle2box");
+		
+		el1.value = arm1Obj.pred_ang * (180 / Math.PI);
+		el2.value = arm2Obj.pred_ang * (180 / Math.PI);
+		
+	}
 
 }
 
@@ -568,19 +595,21 @@ function createPredChain(out, obj){
 	
 }
 
-function jacob_1(obj1, obj2, x, y, limit){
+function jacob_1(obj1ang, obj2ang, x, y, limit){
+
+	click = false;
 
 	//check to see how far we have iterated
 	if(limit > 60){
-		return false;
+		return {ang1:obj1ang, ang2:obj2ang};
 	}
 	
 	++limit;
 
 	//convert to degrees
 	
-	var ang1 = obj1.pred_ang * (180/ Math.PI) ;
-	var ang2 = obj2.pred_ang * (180/ Math.PI);
+	var ang1 = obj1ang * (180/ Math.PI) ;
+	var ang2 = obj2ang * (180/ Math.PI);
 	
 	
 	//compute x approx and y approx
@@ -595,9 +624,10 @@ function jacob_1(obj1, obj2, x, y, limit){
 
 
 	var e = .05;
+	var alpha = .5;
 	
 	if(Math.abs(x_diff) < e &&  Math.abs(y_diff) < e){
-		return true;
+		return {ang1:obj1ang, ang2:obj2ang};
 	}
 	
 	var e2 = .0000005;
@@ -616,8 +646,8 @@ function jacob_1(obj1, obj2, x, y, limit){
 	
 	// solve systems
 	
-	var d_theta1 = (x_diff * x_theta1 + y_diff * y_theta1)/(x_theta1 * x_theta1 + y_theta1 * y_theta1)
-	var d_theta2 = (x_diff * x_theta2 + y_diff * y_theta2)/(x_theta2 * x_theta2 + y_theta2 * y_theta2)
+	var d_theta1 = alpha * (x_diff * x_theta1 + y_diff * y_theta1)/(x_theta1 * x_theta1 + y_theta1 * y_theta1)
+	var d_theta2 = alpha * (x_diff * x_theta2 + y_diff * y_theta2)/(x_theta2 * x_theta2 + y_theta2 * y_theta2)
 
 	if(Number.isNaN(d_theta1)){
 		d_theta1 = 0;
@@ -629,16 +659,13 @@ function jacob_1(obj1, obj2, x, y, limit){
 	
 	
 	
-	obj1.pred_ang += (Math.PI/180) * d_theta1;
-	obj2.pred_ang += (Math.PI/180) * d_theta2;
-	
-	obj1.pred_ang = obj1.pred_ang % (2 * Math.PI);
-	obj2.pred_ang = obj2.pred_ang % (2 * Math.PI);
-	
-	
-	drawScene();
+	obj1ang += (Math.PI/180) * d_theta1;
+	obj2ang += (Math.PI/180) * d_theta2;
+	obj1ang = obj1ang % (2 * Math.PI);
+	obj2ang = obj2ang % (2 * Math.PI);
 
-	return jacob_1(obj1, obj2, x, y, limit);
+
+	return jacob_1(obj1ang, obj2ang, x, y, limit);
 
 
 }
@@ -681,7 +708,6 @@ function relMouseCoords(event){
 	canvasY = 1.0 -  2.0 * (canvasY/screenY);
 	
 	
-	
 	var inverse = mat4.create();
 	
 	mat4.multiply(inverse, perspectiveMatrix, modelViewMatrix);
@@ -719,8 +745,15 @@ function relMouseCoords(event){
 	el1.innerHTML = canvasX;
 	el2.innerHTML = canvasY;
 	
-
+	click = true;
+	
     return {x:canvasX, y:canvasY}
 }
 
+function animate(obj1, obj2){
 
+	var t = (300 - frames)/300;
+	obj1.pred_ang = (1.0 - t) * obj1.pred_ang + (t) * angs.ang1;
+	obj2.pred_ang = (1.0 - t) * obj2.pred_ang + (t) * angs.ang2;
+	frames -= 15;
+}
