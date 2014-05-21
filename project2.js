@@ -28,6 +28,7 @@ var perspectiveMatrix
 var modelViewMatrix;
 
 var click = false;
+var anim = true;
 
 var angs;
 var frames;
@@ -128,10 +129,12 @@ function start() {
 	var el1 = document.getElementById("angle1box");
 	var el2 = document.getElementById("angle2box");
 	var el3 = document.getElementById("resetBox");
+	var el4 = document.getElementById("animationBox");
 	
 	el1.addEventListener("input", function(){arm1Obj.pred_ang = el1.value * (Math.PI / 180);}, false);
 	el2.addEventListener("input", function(){arm2Obj.pred_ang = el2.value * (Math.PI / 180);}, false);
 	el3.addEventListener("change", function(){alwaysReset = el3.checked;}, false);
+	el4.addEventListener("change", function(){anim = el4.checked;}, false);
 	
 	canvas.addEventListener("click", relMouseCoords, false);
 	
@@ -502,10 +505,16 @@ function animateScene(){
 		}
 	
 		angs = jacob_1(arm1Obj.pred_ang, arm2Obj.pred_ang, canvasX, canvasY, 0);
-		frames = 300;
+		
+		if(anim){
+			frames = 300;
+		} else {
+			arm1Obj.pred_ang = angs.ang1;
+			arm2Obj.pred_ang = angs.ang2;
+		}
 	}
 	
-	if(frames >= 0){
+	if(frames >= 0 && anim){
 		animate(arm1Obj, arm2Obj);
 		
 		var el1 = document.getElementById("angle1box");
