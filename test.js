@@ -594,24 +594,24 @@ function jacob_1(obj1, obj2, x, y, limit){
 	var y_diff = y - y_a;
 
 
-	var e = .005;
+	var e = .05;
 	
 	if(Math.abs(x_diff) < e &&  Math.abs(y_diff) < e){
 		return true;
 	}
 	
-	var e2 = .05;
+	var e2 = .0000005;
 	//otherwise compute our partial derivatives using central difference 
 	
-	// var x_theta1 = (X(6,ang1 + e2,ang2) - X(6,ang1 - e2,ang2))/(2 * e2);
-	// var x_theta2 = (X(6,ang1,ang2 + e2) - X(6,ang1,ang2 - e2))/(2 * e2);
-	// var y_theta1 = (Y(6,ang1 + e2,ang2) - Y(6,ang1 - e2,ang2))/(2 * e2);
-	// var y_theta2 = (Y(6,ang1,ang2 + e2) - Y(6,ang1,ang2 - e2))/(2 * e2);
+	var x_theta1 = (X(6,ang1 + e2,ang2) - X(6,ang1 - e2,ang2))/(2 * e2);
+	var x_theta2 = (X(6,ang1,ang2 + e2) - X(6,ang1,ang2 - e2))/(2 * e2);
+	var y_theta1 = (Y(6,ang1 + e2,ang2) - Y(6,ang1 - e2,ang2))/(2 * e2);
+	var y_theta2 = (Y(6,ang1,ang2 + e2) - Y(6,ang1,ang2 - e2))/(2 * e2);
 	
-	var x_theta1 = (X(6,ang1 + e2,ang2) - X(6,ang1, ang2))/(e2);
-	var x_theta2 = (X(6,ang1,ang2 + e2) - X(6,ang1, ang2))/(e2);
-	var y_theta1 = (Y(6,ang1 + e2,ang2) - Y(6,ang1, ang2))/(e2);
-	var y_theta2 = (Y(6,ang1,ang2 + e2) - Y(6,ang1, ang2))/(e2);
+	// var x_theta1 = (X(6,ang1 + e2,ang2) - X(6,ang1, ang2))/(e2);
+	// var x_theta2 = (X(6,ang1,ang2 + e2) - X(6,ang1, ang2))/(e2);
+	// var y_theta1 = (Y(6,ang1 + e2,ang2) - Y(6,ang1, ang2))/(e2);
+	// var y_theta2 = (Y(6,ang1,ang2 + e2) - Y(6,ang1, ang2))/(e2);
 	
 	
 	// solve systems
